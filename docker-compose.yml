@@ -1,0 +1,50 @@
+version: "3.3"
+
+services:
+    mysql:
+        image: mysql:5.7
+        container_name: magento-demo-mysql
+        networks:
+            - magento-demo-network
+        ports:
+            - "33066:3306"
+        volumes:
+            - magento-demo-mysql-data:/var/lib/mysql
+        environment:
+            MYSQL_ROOT_PASSWORD: password
+            MYSQL_USER: magento
+            MYSQL_PASSWORD: password
+            MYSQL_DATABASE: magento_demo
+
+    elasticsearch:
+        image: elasticsearch:7.8.1
+        container_name: magento-demo-elasticsearch
+        networks:
+            - magento-demo-network
+        ports:
+            - "9200:9200"
+            - "9300:9300"
+        environment:
+            discovery.type: single-node
+
+    web:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                USER: magento
+                UID: 1000
+                GID: 1000
+        container_name: magento-demo-web
+        networks:
+            - magento-demo-network
+        ports:
+            - "5000:5000"
+        volumes:
+            - .:/workspaces/magento-demo
+
+volumes:
+    magento-demo-mysql-data:
+
+networks:
+    magento-demo-network:
