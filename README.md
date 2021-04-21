@@ -1,11 +1,34 @@
-# Installing Magento in our container
+# Installing Magento in container for demonstration and integration
 
-First order of business is to create the Composer project:
+Because is no one official Magento image exists, i try to create one from scratch.
+
+## Start with configuration
+
+First of all i investigate some tutorials and create Dockerfile and docker-compose configuration to combine:
+1. Ubuntu image with php7.4 directly, because magento dont work with "latest" version of ubuntu php 8.
+2. Mysql DB.
+3. Elasticsearch.
+4. Container nenwork.
+
+Magento will work on 5000 port, mysql - on 3306, elasticsearch on 9200 and 9300.
+
+MySql user will be: magento with password "password" and DB name will be magento_demo.
+
+Next i run all in one:
+
+```
+docker-compose uo --build
+```
+
+## In-container work: install Magento components
+
+To install Magento in container, i should enter it
 
 ```
 docker exec -it magento-demo-web bash
 ```
 
+Than i should run installation because Magento has composer package.
 
 ```
 composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition /workspaces/magento-demo/install
@@ -15,25 +38,21 @@ NOTE: in this command you should use:
 ```"username": "<Public key>"```
 ```"password": "<Private key>"```   
 
+Those keys are in Magento official site Account section and we will use them in local installation because Magento package is proprietal and we should be secure in access to it.
 This command will download all the Magento files as specified by the magento/project-community-edition project from the https://repo.magento.com/ repository. 
-There are a few gotchas though:
-1. First, Magento is not openly available to download just like that. As such, Composer will ask for authentication in order to do so. 
-   Follow this guide [https://devdocs.magento.com/guides/v2.4/install-gde/prereq/connect-auth.html] to obtain the authentication keys from the Magento Marketplace. 
-   When Composer asks for a username, type in the public key; when it asks for password, type in the private key.
-2. Second, you’ll notice that I specified /workspaces/magento-demo/install at the end of that command. 
-   This is where all the files will be downloaded. 
-   I’ve chosen this (an install directory inside our current one) because composer create-project will refuse to download the files in a directory that’s not empty. 
-   Ours isn’t, because we’ve got our Dockerfile in it. 
-   But that’s nothing to worry about, once Composer finishes downloading everything, we’ll just copy the files over to their rightful location at /workspaces/magento-demo. 
-   You can do so with some Linux sorcery like this:
+To obtain this keys i follow the next guide [https://devdocs.magento.com/guides/v2.4/install-gde/prereq/connect-auth.html].
 
-   ```
-   (shopt -s dotglob; mv -v /workspaces/magento-demo/install/workspaces/magento-demo/install/* .)
-   ```
 
-This Composer operation will take a good while, but when it’s done, make sure to move all the contents of /workspaces/magento-demo/install into /workspaces/magento-demo.
+Than, Magento placed all files in "install" folder and i should move them directly in our root folder (WORKDIR: /workspace/magento-demo) manually or with command:
 
-We now need to actually install Magento:
+```
+mv ./install/* ./
+```
+
+## In-container work: install and initialize Magento package
+
+We now need to actually install Magento like this
+
 ```
 bin/magento setup:install \
   --base-url=http://localhost:5000 \
@@ -54,17 +73,20 @@ bin/magento setup:install \
   --elasticsearch-port=9200
 ```
 
-Once that command is done, we’re ready. We have a working Magento. Try it out by running this:
+## In-container work: run Magento
+
+Once that command is done, i am ready to rock and roll. Lets run the next command:
 
 ```
 php -S 0.0.0.0:5000 -t ./pub/ ./phpserver/router.php
 ```
 
-And navigating to ```localhost:5000```  in your browser. You should see your empty Magento homepage.
+And than, i should navigating to ```localhost:5000```  in browser. I see empty Magento homepage.
 
-Optional: Installing the sample data:
+## In-container work: installing the sample data:
 
-If you’re planning some custom extension, or to just play with Magento to get to know it better, you may want to add some sample data. Luckily, the Magento devs have graciously provided such a thing in the form of a Composer package. If you want, you can install it with this recipe:
+Magento will empty, but i found some commands to install sample datas.
+NOTE: This will also use secure magento repository and i will need auth with Publik and Private keys:
 
 ```
 bin/magento sampledata:deploy
@@ -73,16 +95,20 @@ bin/magento indexer:reindex
 bin/magento cache:flush
 ```
 
-```bin/magento sampledata:deploy```  will also ask you for your Magento Makerplace keys so have them ready.
+## In-container work: if i need to remove old configuration at all
 
 Remove previous installation:
 
 ```
 rm app/etc/env.php
+or 
+rm /workspace/magento-demo
 ```
 
-You should set correct permissions for the whole Magento 2 installation directory by running the below command:
+NOTE: I should set correct permissions for the whole Magento 2 installation directory by running the below command:
 
 ```
 find . -type d -exec chmod 700 {} \; && find . -type f -exec chmod 600 {} \;
 ```
+
+Profit...
